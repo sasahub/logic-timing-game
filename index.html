@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>論理回路 タイムチャートチャレンジ</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --text: #18202a;
+      --muted: #64748b;
+      --border: #d7dee8;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --a: #2563eb;
+      --b: #7c3aed;
+      --player: #059669;
+      --correct: #dc2626;
+      --grid: #dbe2ea;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      -webkit-text-size-adjust: 100%;
+      touch-action: manipulation;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN",
+                   "Yu Gothic", Meiryo, sans-serif;
+    }
+
+    button, select {
+      font: inherit;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button {
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:disabled {
+      cursor: default;
+    }
+
+    .app {
+      width: min(100%, 980px);
+      margin: 0 auto;
+      padding: 18px;
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    }
+
+    .title {
+      margin: 4px 0 6px;
+      font-size: clamp(24px, 5vw, 36px);
+      line-height: 1.15;
+    }
+
+    .subtitle {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .toolbar,
+    .summary,
+    .controls,
+    .info-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .toolbar {
+      grid-template-columns: 1fr auto;
+      align-items: end;
+      margin-bottom: 14px;
+    }
+
+    .gate-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 7px;
+    }
+
+    .label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .gate-btn,
+    .small-btn {
+      min-height: 46px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 10px 15px;
+      font-weight: 800;
+    }
+
+    .gate-btn.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: #174aa5;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .main-card {
+      padding: 16px;
+    }
+
+    .summary {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .round-line {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .round {
+      font-size: 24px;
+      font-weight: 900;
+    }
+
+    .level {
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 5px 9px;
+      font-size: 13px;
+      font-weight: 800;
+      background: #f8fafc;
+    }
+
+    .instruction {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .score-board {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(74px, 1fr));
+      gap: 10px;
+      text-align: center;
+    }
+
+    .score-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .score-value {
+      margin-top: 2px;
+      font-size: 23px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .chart-wrap {
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      min-width: 700px;
+      height: auto;
+    }
+
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px 14px;
+      margin-top: 11px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .swatch {
+      width: 20px;
+      height: 4px;
+      border-radius: 3px;
+      background: currentColor;
+    }
+
+    .swatch.correct {
+      height: 0;
+      border-top: 3px dashed currentColor;
+      background: transparent;
+    }
+
+    .status {
+      color: var(--text);
+      font-weight: 900;
+    }
+
+    .controls {
+      grid-template-columns: 1fr 1fr 1.25fr;
+      margin-top: 14px;
+    }
+
+    .output-btn,
+    .start-btn {
+      min-height: 82px;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      font-weight: 900;
+    }
+
+    .output-btn {
+      background: var(--panel);
+      color: var(--text);
+      font-size: 30px;
+    }
+
+    .output-btn.selected {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+    }
+
+    .output-btn:disabled {
+      opacity: .38;
+    }
+
+    .start-btn {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-size: 24px;
+    }
+
+    .start-btn:disabled {
+      opacity: .58;
+    }
+
+    .info-grid {
+      grid-template-columns: 1fr 1fr;
+      margin-top: 14px;
+    }
+
+    .info-card {
+      padding: 15px;
+      box-shadow: none;
+    }
+
+    .info-title {
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .current-line {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-top: 7px;
+    }
+
+    .current-value {
+      font-size: 38px;
+      font-weight: 900;
+    }
+
+    .note,
+    .result {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .result {
+      margin: 7px 0 0;
+    }
+
+    .howto {
+      margin-top: 14px;
+      padding: 15px;
+    }
+
+    .howto h2 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .howto ol {
+      margin: 0;
+      padding-left: 1.4em;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 680px) {
+      .app {
+        padding: 12px;
+      }
+
+      .toolbar,
+      .summary,
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar .small-btn {
+        width: 100%;
+      }
+
+      .score-board {
+        width: 100%;
+      }
+
+      .controls {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .start-btn {
+        grid-column: 1 / -1;
+      }
+
+      .main-card {
+        padding: 12px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" id="logicGame">
+    <h1 class="title">論理回路 タイムチャートチャレンジ</h1>
+    <p class="subtitle">
+      入力波形を読み、START後に出力Yを0/1で操作してください。
+      5ラウンドの合計500点満点で競います。
+    </p>
+
+    <section class="toolbar">
+      <div>
+        <div class="label">論理回路を選択</div>
+        <div class="gate-row" role="group" aria-label="論理回路を選択">
+          <button type="button" class="gate-btn active" data-gate="AND">AND</button>
+          <button type="button" class="gate-btn" data-gate="OR">OR</button>
+          <button type="button" class="gate-btn" data-gate="XOR">XOR</button>
+          <button type="button" class="gate-btn" data-gate="NOT">NOT</button>
+        </div>
+      </div>
+      <button id="resetGame" type="button" class="small-btn">ゲームをリセット</button>
+    </section>
+
+    <section class="card main-card">
+      <div class="summary">
+        <div>
+          <div class="round-line">
+            <span class="label">ROUND</span>
+            <span id="roundText" class="round">1 / 5</span>
+            <span id="levelBadge" class="level">LEVEL 1</span>
+          </div>
+          <p id="instruction" class="instruction">
+            入力波形を見てYを考えてください。準備ができたらSTART。
+          </p>
+        </div>
+
+        <div class="score-board">
+          <div>
+            <div class="score-label">前回</div>
+            <div id="lastScore" class="score-value">--</div>
+          </div>
+          <div>
+            <div class="score-label">合計</div>
+            <div id="totalScore" class="score-value">0 / 500</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <svg id="chart" viewBox="0 0 800 310" role="img" aria-label="論理回路のタイムチャート">
+          <defs>
+            <clipPath id="chartClip">
+              <rect x="92" y="18" width="660" height="255" rx="8"></rect>
+            </clipPath>
+          </defs>
+          <g id="gridLayer"></g>
+          <g id="inputLayer" clip-path="url(#chartClip)"></g>
+          <g id="playerLayer" clip-path="url(#chartClip)"></g>
+          <g id="correctLayer" clip-path="url(#chartClip)"></g>
+          <g id="cursorLayer"></g>
+        </svg>
+      </div>
+
+      <div class="legend-row">
+        <div class="legend">
+          <span class="legend-item" style="color:var(--a)"><span class="swatch"></span>入力 A</span>
+          <span id="legendB" class="legend-item" style="color:var(--b)"><span class="swatch"></span>入力 B</span>
+          <span class="legend-item" style="color:var(--player)"><span class="swatch"></span>あなたの Y</span>
+          <span id="correctLegend" class="legend-item" style="color:var(--correct);display:none">
+            <span class="swatch correct"></span>正しい Y
+          </span>
+        </div>
+        <strong id="status" class="status" aria-live="polite">思考中</strong>
+      </div>
+    </section>
+
+    <section class="controls">
+      <button id="out0" type="button" class="output-btn" disabled>Y = 0</button>
+      <button id="out1" type="button" class="output-btn" disabled>Y = 1</button>
+      <button id="startBtn" type="button" class="start-btn">START</button>
+    </section>
+
+    <section class="info-grid">
+      <div class="card info-card">
+        <div class="info-title">現在の出力</div>
+        <div class="current-line">
+          <strong id="currentOutput" class="current-value">0</strong>
+          <span class="note">START後に0 / 1を切り替えます</span>
+        </div>
+      </div>
+
+      <div class="card info-card">
+        <div class="info-title">ゲーム結果</div>
+        <p id="resultText" class="result">
+          5回の正解率を合計して500点満点で競います。
+        </p>
+      </div>
+    </section>
+
+    <section class="card howto">
+      <h2>遊び方</h2>
+      <ol>
+        <li>入力A・Bの波形を見て、正しい出力Yを頭の中で考えます。</li>
+        <li>準備ができたらSTARTを押します。</li>
+        <li>縦線が左から右へ進むので、その位置で正しいY=0 / Y=1を選びます。</li>
+        <li>画面端まで到達すると、正しい出力波形が点線で表示されます。</li>
+        <li>5ラウンドの合計点を競います。ラウンドが進むほど入力波形が複雑になります。</li>
+      </ol>
+    </section>
+  </main>
+
+  <script>
+  (() => {
+    const root = document.getElementById('logicGame');
+    const q = (s) => root.querySelector(s);
+    const svgNS = 'http://www.w3.org/2000/svg';
+
+    const grid = q('#gridLayer');
+    const input = q('#inputLayer');
+    const player = q('#playerLayer');
+    const correct = q('#correctLayer');
+    const cursor = q('#cursorLayer');
+
+    const els = {
+      round: q('#roundText'),
+      level: q('#levelBadge'),
+      instruction: q('#instruction'),
+      last: q('#lastScore'),
+      total: q('#totalScore'),
+      status: q('#status'),
+      start: q('#startBtn'),
+      out0: q('#out0'),
+      out1: q('#out1'),
+      current: q('#currentOutput'),
+      result: q('#resultText'),
+      legendB: q('#legendB'),
+      correctLegend: q('#correctLegend')
+    };
+
+    const gateFns = {
+      AND: (a, b) => (a && b) ? 1 : 0,
+      OR:  (a, b) => (a || b) ? 1 : 0,
+      XOR: (a, b) => (a !== b) ? 1 : 0,
+      NOT: (a) => a ? 0 : 1
+    };
+
+    let gate = 'AND';
+    let round = 1;
+    let scores = [];
+    let running = false;
+    let finished = false;
+    let playerY = 0;
+    let changes = [];
+    let startTime = 0;
+    let raf = 0;
+
+    const left = 96;
+    const right = 748;
+    const width = right - left;
+    const rows = { A: 42, B: 116, Y: 204 };
+    const hi = 18;
+    const lo = 50;
+
+    // 1ラウンドの走査時間：9秒
+    const duration = 9000;
+    const segments = 16;
+
+    let A = [];
+    let B = [];
+
+    function node(name, attrs = {}) {
+      const n = document.createElementNS(svgNS, name);
+      Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, String(v)));
+      return n;
+    }
+
+    function generateWave(level) {
+      const transitionChance = [0, 0.18, 0.28, 0.40, 0.54, 0.68][level];
+
+      function make() {
+        const arr = [];
+        let v = Math.random() < 0.5 ? 0 : 1;
+
+        for (let i = 0; i < segments; i++) {
+          if (i > 0 && Math.random() < transitionChance) {
+            v = 1 - v;
+          }
+          arr.push(v);
+        }
+        return arr;
+      }
+
+      A = make();
+      B = gate === 'NOT' ? Array(segments).fill(0) : make();
+    }
+
+    function expectedAtRatio(ratio) {
+      const idx = Math.min(
+        segments - 1,
+        Math.max(0, Math.floor(ratio * segments))
+      );
+
+      return gate === 'NOT'
+        ? gateFns.NOT(A[idx])
+        : gateFns[gate](A[idx], B[idx]);
+    }
+
+    function drawGrid() {
+      grid.replaceChildren();
+
+      ['A', 'B', 'Y'].forEach(label => {
+        if (gate === 'NOT' && label === 'B') return;
+
+        const y = rows[label];
+
+        const t = node('text', {
+          x: 34,
+          y: y + 40,
+          'font-size': 20,
+          'font-weight': 800,
+          fill: 'currentColor'
+        });
+        t.textContent = label;
+        grid.appendChild(t);
+
+        grid.appendChild(node('line', {
+          x1: left,
+          y1: y + 34,
+          x2: right,
+          y2: y + 34,
+          stroke: 'var(--grid)',
+          'stroke-width': 1
+        }));
+      });
+
+      for (let i = 0; i <= segments; i++) {
+        const x = left + (i / segments) * width;
+        grid.appendChild(node('line', {
+          x1: x,
+          y1: 15,
+          x2: x,
+          y2: 270,
+          stroke: 'var(--grid)',
+          'stroke-width': 1,
+          'stroke-dasharray': '3 6'
+        }));
+      }
+    }
+
+    function digitalPath(values, row) {
+      let d = '';
+      const sw = width / segments;
+
+      values.forEach((v, i) => {
+        const x = left + i * sw;
+        const y = row + (v ? hi : lo);
+
+        if (i === 0) {
+          d = `M ${x} ${y}`;
+        } else {
+          const py = row + (values[i - 1] ? hi : lo);
+          d += ` L ${x} ${py} L ${x} ${y}`;
+        }
+
+        d += ` L ${x + sw} ${y}`;
+      });
+
+      return d;
+    }
+
+    function drawInputs() {
+      input.replaceChildren();
+
+      input.appendChild(node('path', {
+        d: digitalPath(A, rows.A),
+        fill: 'none',
+        stroke: 'var(--a)',
+        'stroke-width': 4,
+        'stroke-linejoin': 'round'
+      }));
+
+      if (gate !== 'NOT') {
+        input.appendChild(node('path', {
+          d: digitalPath(B, rows.B),
+          fill: 'none',
+          stroke: 'var(--b)',
+          'stroke-width': 4,
+          'stroke-linejoin': 'round'
+        }));
+      }
+    }
+
+    function playerValueAt(timeMs) {
+      let v = 0;
+
+      for (const c of changes) {
+        if (c.t <= timeMs) {
+          v = c.v;
+        } else {
+          break;
+        }
+      }
+
+      return v;
+    }
+
+    function playerPath(elapsed) {
+      const endX = left + Math.min(1, elapsed / duration) * width;
+      let lastV = changes.length ? changes[0].v : 0;
+      let d = `M ${left} ${rows.Y + (lastV ? hi : lo)}`;
+
+      for (let i = 1; i < changes.length; i++) {
+        const c = changes[i];
+        if (c.t > elapsed) break;
+
+        const x = left + (c.t / duration) * width;
+        const oldY = rows.Y + (lastV ? hi : lo);
+        const newY = rows.Y + (c.v ? hi : lo);
+
+        d += ` L ${x} ${oldY} L ${x} ${newY}`;
+        lastV = c.v;
+      }
+
+      d += ` L ${endX} ${rows.Y + (lastV ? hi : lo)}`;
+      return d;
+    }
+
+    function drawPlayer(elapsed) {
+      player.replaceChildren();
+
+      if (!running && !finished && changes.length === 0) return;
+
+      player.appendChild(node('path', {
+        d: playerPath(elapsed),
+        fill: 'none',
+        stroke: 'var(--player)',
+        'stroke-width': 5,
+        'stroke-linejoin': 'round'
+      }));
+    }
+
+    function correctValues() {
+      return A.map((a, i) => (
+        gate === 'NOT'
+          ? gateFns.NOT(a)
+          : gateFns[gate](a, B[i])
+      ));
+    }
+
+    function drawCorrect() {
+      correct.replaceChildren();
+
+      correct.appendChild(node('path', {
+        d: digitalPath(correctValues(), rows.Y),
+        fill: 'none',
+        stroke: 'var(--correct)',
+        'stroke-width': 4,
+        'stroke-dasharray': '9 7',
+        'stroke-linejoin': 'round'
+      }));
+
+      els.correctLegend.style.display = 'inline-flex';
+    }
+
+    function drawCursor(ratio) {
+      cursor.replaceChildren();
+
+      if (!running) return;
+
+      const x = left + ratio * width;
+
+      cursor.appendChild(node('line', {
+        x1: x,
+        y1: 17,
+        x2: x,
+        y2: 272,
+        stroke: 'var(--accent)',
+        'stroke-width': 4
+      }));
+
+      cursor.appendChild(node('circle', {
+        cx: x,
+        cy: rows.Y + (playerY ? hi : lo),
+        r: 7,
+        fill: 'var(--accent)'
+      }));
+    }
+
+    function styleOutputButtons() {
+      els.out0.classList.toggle('selected', running && playerY === 0);
+      els.out1.classList.toggle('selected', running && playerY === 1);
+    }
+
+    function setOutput(v) {
+      if (!running || v === playerY) return;
+
+      playerY = v;
+
+      changes.push({
+        t: Math.min(duration, performance.now() - startTime),
+        v
+      });
+
+      els.current.textContent = v;
+      styleOutputButtons();
+      drawPlayer(performance.now() - startTime);
+    }
+
+    function calcAccuracy() {
+      const samples = 500;
+      let good = 0;
+
+      for (let i = 0; i < samples; i++) {
+        const ratio = (i + 0.5) / samples;
+
+        if (
+          playerValueAt(ratio * duration) ===
+          expectedAtRatio(ratio)
+        ) {
+          good++;
+        }
+      }
+
+      return Math.round((good / samples) * 100);
+    }
+
+    function finishRun() {
+      running = false;
+      finished = true;
+      cancelAnimationFrame(raf);
+
+      els.out0.disabled = true;
+      els.out1.disabled = true;
+      styleOutputButtons();
+
+      drawPlayer(duration);
+      cursor.replaceChildren();
+      drawCorrect();
+
+      const accuracy = calcAccuracy();
+      scores.push(accuracy);
+
+      els.last.textContent = accuracy + '点';
+      els.total.textContent =
+        scores.reduce((a, b) => a + b, 0) + ' / 500';
+      els.status.textContent = '正解率 ' + accuracy + '%';
+
+      if (round >= 5) {
+        const total = scores.reduce((a, b) => a + b, 0);
+
+        els.result.textContent =
+          'ゲーム終了！ 合計 ' + total +
+          ' / 500点。平均正解率 ' +
+          Math.round(total / 5) + '%でした。';
+
+        els.instruction.textContent =
+          '全5ラウンド終了です。もう一度挑戦する場合はゲームをリセットしてください。';
+
+        els.start.disabled = true;
+        els.start.textContent = 'FINISH';
+      } else {
+        els.result.textContent =
+          'ROUND ' + round + '：' + accuracy +
+          '点。赤い点線が正しいY波形です。';
+
+        els.start.disabled = false;
+        els.start.textContent = '次の問題';
+      }
+    }
+
+    function animate(now) {
+      if (!running) return;
+
+      const elapsed = now - startTime;
+      const ratio = Math.min(1, elapsed / duration);
+
+      drawPlayer(elapsed);
+      drawCursor(ratio);
+
+      if (ratio >= 1) {
+        finishRun();
+        return;
+      }
+
+      raf = requestAnimationFrame(animate);
+    }
+
+    function startRun() {
+      if (running) return;
+
+      if (finished && round < 5) {
+        round++;
+        prepareRound();
+        return;
+      }
+
+      running = true;
+      finished = false;
+      playerY = 0;
+      changes = [{ t: 0, v: 0 }];
+
+      correct.replaceChildren();
+      els.correctLegend.style.display = 'none';
+
+      els.out0.disabled = false;
+      els.out1.disabled = false;
+      els.start.disabled = true;
+      els.start.textContent = 'RUNNING';
+
+      els.status.textContent = '解答中';
+      els.instruction.textContent =
+        '縦線の進行に合わせてY=0 / Y=1を切り替えてください。';
+
+      els.current.textContent = '0';
+      styleOutputButtons();
+
+      startTime = performance.now();
+      raf = requestAnimationFrame(animate);
+    }
+
+    function prepareRound() {
+      running = false;
+      finished = false;
+      cancelAnimationFrame(raf);
+
+      generateWave(round);
+
+      changes = [];
+      playerY = 0;
+
+      correct.replaceChildren();
+      player.replaceChildren();
+      cursor.replaceChildren();
+      els.correctLegend.style.display = 'none';
+
+      els.round.textContent = round + ' / 5';
+      els.level.textContent = 'LEVEL ' + round;
+      els.status.textContent = '思考中';
+
+      els.instruction.textContent =
+        '入力波形を見てYを考えてください。準備ができたらSTART。';
+
+      els.start.disabled = false;
+      els.start.textContent = 'START';
+
+      els.out0.disabled = true;
+      els.out1.disabled = true;
+
+      els.current.textContent = '0';
+      els.legendB.style.display =
+        gate === 'NOT' ? 'none' : 'inline-flex';
+
+      drawGrid();
+      drawInputs();
+      styleOutputButtons();
+    }
+
+    function resetGame() {
+      round = 1;
+      scores = [];
+
+      els.last.textContent = '--';
+      els.total.textContent = '0 / 500';
+      els.result.textContent =
+        '5回の正解率を合計して500点満点で競います。';
+
+      prepareRound();
+    }
+
+    root.querySelectorAll('.gate-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (running) return;
+
+        gate = btn.dataset.gate;
+
+        root.querySelectorAll('.gate-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.gate === gate);
+        });
+
+        resetGame();
+      });
+    });
+
+    els.start.addEventListener('click', startRun);
+
+    els.out0.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      setOutput(0);
+    });
+
+    els.out1.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      setOutput(1);
+    });
+
+    q('#resetGame').addEventListener('click', resetGame);
+
+    root.addEventListener('keydown', e => {
+      if (!running) return;
+      if (e.target.matches('input,textarea,select,button')) return;
+
+      if (e.key === '0') setOutput(0);
+      if (e.key === '1') setOutput(1);
+    });
+
+    resetGame();
+  })();
+  </script>
+</body>
+</html>
